@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=2160, height=3840, initial-scale=1.0">
+  <title>BeamMe Interactive Kiosk</title>
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      background: #f5f7fa;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.7s;
+      background: transparent;
+      z-index: 1;
+    }
+    .screen.active {
+      opacity: 1;
+      pointer-events: auto;
+      z-index: 10;
+    }
+    /* Attraction Screen */
+    #attraction-screen {
+      background: #000;
+      justify-content: flex-end;
+    }
+    #attraction-video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 1;
+    }
+    #attraction-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #5ec6ff;
+      font-size: 3vw;
+      font-weight: bold;
+      text-align: center;
+      z-index: 2;
+      text-shadow: 2px 2px 8px #000, 0 0 20px #fff;
+      letter-spacing: 1px;
+      user-select: none;
+      pointer-events: none;
+    }
+    /* Logo at the very top */
+    .logo {
+      display: block;
+      margin-top: 4.5vh;
+      margin-bottom: 7.5vh;
+      max-width: 900px;
+      width: 76.5vw;
+      height: auto;
+      align-self: center;
+    }
+    /* Main Menu 3-column Grid Layout */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 2.5vw 2vw;
+      width: 70vw;
+      max-width: 1200px;
+      margin: 0 auto;
+      justify-items: center;
+      align-items: start;
+    }
+    .menu-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 405px;
+      height: 720px;
+      aspect-ratio: 9/16;
+      background: #fff;
+      border-radius: 28px;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.10);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: 4px solid #2a62b3;
+      overflow: hidden;
+      position: relative;
+      padding: 0;
+    }
+    .menu-tile:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; transform: none; margin: 0; }
+    .menu-tile:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; transform: none; margin: 0; }
+    .menu-tile:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; transform: none; margin: 0; }
+    .menu-tile.bottom-row:nth-child(4) {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      transform: translateX(-260px);
+      margin: 0;
+    }
+    .menu-tile.bottom-row:nth-child(5) {
+      grid-column: 3 / 4;
+      grid-row: 2 / 3;
+      transform: translateX(-220px);
+      margin: 0;
+    }
+    .menu-tile:hover {
+      transform: scale(1.04);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+    }
+    .tile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #eaf2fb;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .tile-label {
+      width: 100%;
+      height: 70px;
+      background: #2a62b3;
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom-left-radius: 24px;
+      border-bottom-right-radius: 24px;
+      letter-spacing: 0.5px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      z-index: 2;
+    }
+    /* Submenu grid (keep flex for dynamic options) */
+    .submenu-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 2.5vw 2vw;
+      width: 70vw;
+      max-width: 1200px;
+      margin: 0 auto;
+      justify-items: center;
+      align-items: start;
+    }
+    .submenu-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      width: 405px;
+      height: 720px;
+      aspect-ratio: 9/16;
+      background: #fff;
+      border-radius: 28px;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.10);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: 4px solid #2a62b3;
+      overflow: hidden;
+      position: relative;
+      padding: 0;
+    }
+    /* Corporate and Retail (5 items) */
+    .submenu-tile:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; }
+    .submenu-tile:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; }
+    .submenu-tile:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; }
+    .submenu-tile:nth-child(4) {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      transform: translateX(-260px);
+    }
+    .submenu-tile:nth-child(5) {
+      grid-column: 3 / 4;
+      grid-row: 2 / 3;
+      transform: translateX(-220px);
+    }
+    /* Entertainment (4 items) */
+    .submenu-tile.entertainment:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.entertainment:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.entertainment:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.entertainment:nth-child(4) {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      transform: none;
+    }
+    /* Education (4 items) */
+    .submenu-tile.education:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.education:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.education:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.education:nth-child(4) {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+      transform: none;
+    }
+    /* Interactive (3 items, top row only) */
+    .submenu-tile.interactive:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.interactive:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.interactive:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; transform: none; }
+    .submenu-tile:hover {
+      transform: scale(1.04);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.18);
+    }
+    .submenu-tile .tile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #eaf2fb;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+    .submenu-tile .tile-label {
+      width: 100%;
+      height: 70px;
+      background: #2a62b3;
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom-left-radius: 24px;
+      border-bottom-right-radius: 24px;
+      letter-spacing: 0.5px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      z-index: 2;
+    }
+    /* Submenu icons */
+    .icon {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      top: 4.5vh;
+      z-index: 20;
+      cursor: pointer;
+      opacity: 0.85;
+      transition: opacity 0.2s;
+    }
+    .icon.back { right: 5vw; }
+    .icon.home { left: 5vw; }
+    .icon:hover { opacity: 1; }
+    /* Video Playback */
+    #video-player {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      background: #000;
+      z-index: 100;
+    }
+    @media (max-width: 1200px) {
+      .menu-tile, .submenu-tile { width: 38vw; height: 28vw; min-width: 180px; min-height: 220px; }
+      .tile-img { height: 60%; }
+    }
+    .menu-tile.spacer {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      pointer-events: none;
+      width: 270px;
+      height: 480px;
+      aspect-ratio: 9/16;
+      visibility: hidden;
+    }
+    /* Retail (6 items, 3x2 grid, equally spaced) */
+    .submenu-tile.retail:nth-child(1) { grid-column: 1 / 2; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.retail:nth-child(2) { grid-column: 2 / 3; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.retail:nth-child(3) { grid-column: 3 / 4; grid-row: 1 / 2; transform: none; }
+    .submenu-tile.retail:nth-child(4) { grid-column: 1 / 2; grid-row: 2 / 3; transform: none; }
+    .submenu-tile.retail:nth-child(5) { grid-column: 2 / 3; grid-row: 2 / 3; transform: none; }
+    .submenu-tile.retail:nth-child(6) { grid-column: 3 / 4; grid-row: 2 / 3; transform: none; }
+    /* Make icons more transparent on video screen, but still clickable */
+    #video-screen .icon {
+      opacity: 0.5;
+      transition: opacity 0.2s;
+      z-index: 200;
+      position: absolute;
+    }
+    #video-screen .icon:hover {
+      opacity: 0.85;
+    }
+    /* 3D Model Overlay styles */
+    #model-screen {
+      position: relative;
+    }
+    .model-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 3vh 5vw 0 5vw;
+      display: flex;
+      justify-content: space-between;
+      z-index: 1000;
+    }
+    .model-header .icon {
+      opacity: 0.5;
+      pointer-events: auto;
+      z-index: 1001;
+      position: static;
+      width: 120px;
+      height: 120px;
+      margin: 0 15px;
+      transition: opacity 0.2s;
+    }
+    .model-header .icon:hover {
+      opacity: 0.85;
+    }
+    .volume-controls {
+      position: absolute;
+      top: 50%;
+      right: 0.5vw;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 210;
+      gap: 6px;
+    }
+    .vol-btn {
+      width: 157.5px;
+      height: auto;
+      margin: -15px;
+      padding: 0;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      user-select: none;
+    }
+    .vol-btn:hover {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <!-- Attraction Screen -->
+  <div id="attraction-screen" class="screen active">
+    <video id="attraction-video" src="Media/Intro.mp4" autoplay loop muted playsinline></video>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="main-menu" class="screen" style="pointer-events: none;">
+    <img class="logo" src="Media/LogoR.png" alt="BeamMe Logo">
+    <img class="icon back" src="Media/BackButton.png" alt="Back">
+    <img class="icon home" src="Media/HomeButton.png" alt="Home">
+    <div class="volume-controls">
+      <img class="vol-btn volup" src="Media/Volup.png" alt="Volume Up">
+      <img class="vol-btn vol" src="Media/Vol.png" alt="Volume">
+      <img class="vol-btn voldown" src="Media/Voldown.png" alt="Volume Down">
+    </div>
+    <div class="menu-grid">
+      <div class="menu-tile" data-category="corporate">
+        <img class="tile-img" src="Media/corporate-thumb.png" alt="Corporate">
+        <div class="tile-label">Corporate</div>
+      </div>
+      <div class="menu-tile" data-category="retail">
+        <img class="tile-img" src="Media/retail-thumb.png" alt="Retail">
+        <div class="tile-label">Retail</div>
+      </div>
+      <div class="menu-tile" data-category="entertainment">
+        <img class="tile-img" src="Media/entertainment-thumb.png" alt="Entertainment">
+        <div class="tile-label">Entertainment</div>
+      </div>
+      <div class="menu-tile bottom-row" data-category="interactive">
+        <img class="tile-img" src="Media/interactive-thumb.png" alt="Interactive Content">
+        <div class="tile-label">Interactive Content</div>
+      </div>
+      <div class="menu-tile bottom-row" data-category="education">
+        <img class="tile-img" src="Media/education-thumb.png" alt="Education">
+        <div class="tile-label">Education</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submenu Template (populated by JS) -->
+  <div id="submenu" class="screen">
+    <img class="logo" src="Media/LogoR.png" alt="BeamMe Logo">
+    <img class="icon back" src="Media/BackButton.png" alt="Back">
+    <img class="icon home" src="Media/HomeButton.png" alt="Home">
+    <div class="volume-controls">
+      <img class="vol-btn volup" src="Media/Volup.png" alt="Volume Up">
+      <img class="vol-btn vol" src="Media/Vol.png" alt="Volume">
+      <img class="vol-btn voldown" src="Media/Voldown.png" alt="Volume Down">
+    </div>
+    <div class="submenu-grid"></div>
+  </div>
+
+  <!-- Video Playback -->
+  <div id="video-screen" class="screen">
+    <img class="icon back" src="Media/BackButton.png" alt="Back">
+    <img class="icon home" src="Media/HomeButton.png" alt="Home">
+    <div class="volume-controls">
+      <img class="vol-btn volup" src="Media/Volup.png" alt="Volume Up">
+      <img class="vol-btn vol" src="Media/Vol.png" alt="Volume">
+      <img class="vol-btn voldown" src="Media/Voldown.png" alt="Volume Down">
+    </div>
+    <video id="video-player" autoplay playsinline></video>
+  </div>
+
+  <!-- 3D Model Overlay -->
+  <div id="model-screen" class="screen">
+    <div class="model-header">
+      <img class="icon home" src="Media/HomeButton.png" alt="Home">
+      <img class="icon back" src="Media/BackButton.png" alt="Back">
+    </div>
+    <iframe id="model-iframe" style="width:100vw; height:100vh; border:none;" allowfullscreen mozallowfullscreen="true" webkitallowfullscreen="true" allow="autoplay; fullscreen; xr-spatial-tracking"></iframe>
+  </div>
+
+  <script>
+    // --- Data for submenus and videos (replace with your real assets) ---
+    const categories = {
+      corporate: {
+        options: [
+          { label: 'Subject Matter Experts', img: 'Media/corporate1.png', video: 'Media/subjectmatter.mp4' },
+          { label: 'Corporate Storytelling', img: 'Media/corporate2.png', video: 'Media/corporatestory.mp4' },
+          { label: 'C-level Communication', img: 'Media/corporate3.png', video: 'Media/clevel.mp4' },
+          { label: 'Networking', img: 'Media/corporate4.png', video: 'Media/networking.mp4' },
+          { label: 'Product Launches', img: 'Media/corporate5.png', video: 'Media/productlaunch.mp4' },
+        ]
+      },
+      retail: {
+        options: [
+          { label: 'Lookbook', img: 'Media/retail1.png', video: 'Media/lookbook.mp4' },
+          { label: 'Advertising', img: 'Media/retail2.png', video: 'Media/advertising.mp4' },
+          { label: 'Masterclass', img: 'Media/retail3.png', video: 'Media/masterclass.mp4' },
+          { label: 'Workshop', img: 'Media/retail4.png', video: 'Media/workshop.mp4' },
+          { label: 'Product Offer', img: 'Media/retail5.png', video: 'Media/productoffer.mp4' },
+          { label: 'Promotional Offer', img: 'Media/retail6.png', video: 'Media/promotionaloffer.mp4' },
+        ]
+      },
+      entertainment: {
+        options: [
+          { label: 'Performances', img: 'Media/ent1.png', video: 'Media/performances.mp4' },
+          { label: 'Storytelling', img: 'Media/ent2.png', video: 'Media/storytelling.mp4' },
+          { label: 'Animation', img: 'Media/ent3.png', video: 'Media/animation.mp4' },
+          { label: 'Phygital', img: 'Media/ent4.png', video: 'Media/phygital.mp4' },
+        ]
+      },
+      education: {
+        options: [
+          { label: 'Leadership', img: 'Media/edu1.png', video: 'Media/leadership.mp4' },
+          { label: 'Science Experiment', img: 'Media/edu2.png', video: 'Media/scienceexperiment.mp4' },
+          { label: 'Conservation', img: 'Media/edu3.png', video: 'Media/conservation.mp4' },
+          { label: 'Historical Preservation', img: 'Media/edu4.png', video: 'Media/historicalpreservation.mp4' },
+        ]
+      },
+      interactive: {
+        options: [
+          { label: 'IRMSA', img: 'Media/int11.png', video: 'Media/irmsa.mp4' },
+          { label: '3D Showcase', img: 'Media/medical.png', video: 'Media/design.mp4' }
+        ]
+      }
+    };
+
+    // Showcase submenu options with alternating Sketchfab links
+    const showcaseOptions = [
+      { label: 'Automotive', img: 'Media/auto.png', model: 'https://sketchfab.com/models/c18b3cc96c6342d5a22315289f901706/embed?autostart=1&camera=0' },
+      { label: 'Fashion', img: 'Media/fashion.png', model: 'https://sketchfab.com/models/a640d7ab2caa4bd7b0cb2f60fb1a8429/embed?autostart=1&camera=0' },
+      { label: 'Medical', img: 'Media/medical.png', model: 'https://sketchfab.com/models/527d60ae53bc4318a8b5d953f0094327/embed?autostart=1&camera=0' },
+      { label: 'Product Launch', img: 'Media/productlaunch.png', model: 'https://sketchfab.com/models/bf4d25b5d7a14ef185fd059dc8a80dbc/embed?autostart=1&camera=0' },
+      { label: 'Art/Design', img: 'Media/art.png', model: 'https://sketchfab.com/models/8609caf1cd8c452eb7b6d4ca4228fcd0/embed?autostart=1&camera=0' },
+      { label: 'Architecture', img: 'Media/3D Logos.png', model: 'https://sketchfab.com/models/8cdf3be6425047d0b303c83ef5056c97/embed?autostart=1&camera=0' }
+    ];
+
+    // --- Screen management ---
+    const screens = {
+      attraction: document.getElementById('attraction-screen'),
+      main: document.getElementById('main-menu'),
+      submenu: document.getElementById('submenu'),
+      video: document.getElementById('video-screen'),
+      model: document.getElementById('model-screen')
+    };
+    let currentScreen = 'attraction';
+    let lastSubmenu = null;
+
+    function showScreen(name) {
+      for (const key in screens) {
+        screens[key].classList.remove('active');
+      }
+      screens[name].classList.add('active');
+      currentScreen = name;
+    }
+
+    // --- Attraction Screen Logic ---
+    function enableMainMenuPointerEvents() {
+      document.getElementById('main-menu').style.pointerEvents = '';
+    }
+    screens.attraction.addEventListener('click', () => {
+      fadeTo('main');
+      document.getElementById('main-menu').style.pointerEvents = 'none';
+      setTimeout(enableMainMenuPointerEvents, 400);
+    });
+    screens.attraction.addEventListener('touchstart', () => {
+      fadeTo('main');
+      document.getElementById('main-menu').style.pointerEvents = 'none';
+      setTimeout(enableMainMenuPointerEvents, 400);
+    });
+
+    // --- Main Menu Logic ---
+    document.querySelectorAll('.menu-tile').forEach(tile => {
+      tile.addEventListener('click', () => {
+        const cat = tile.getAttribute('data-category');
+        buildSubmenu(cat);
+        fadeTo('submenu');
+        lastSubmenu = cat;
+      });
+    });
+
+    // --- Submenu Logic ---
+    const submenuGrid = document.querySelector('.submenu-grid');
+    document.querySelector('#submenu .icon.home').onclick = () => {
+      fadeTo('main');
+      lastSubmenu = null;
+    };
+    document.querySelector('#submenu .icon.back').onclick = () => {
+      if (lastSubmenu === 'showcase') {
+        buildSubmenu('interactive');
+        lastSubmenu = 'interactive'; // Reset so further back presses work
+      } else {
+        fadeTo('main');
+        lastSubmenu = null;
+      }
+    };
+    function buildSubmenu(category) {
+      submenuGrid.innerHTML = '';
+      if (!categories[category]) return;
+      categories[category].options.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        let extraClass = '';
+        if (category === 'entertainment') extraClass = ' entertainment';
+        if (category === 'education') extraClass = ' education';
+        if (category === 'interactive') extraClass = ' interactive';
+        if (category === 'retail') extraClass = ' retail';
+        div.className = 'submenu-tile' + extraClass;
+        div.innerHTML = `<img class="tile-img" src="${opt.img}" alt="${opt.label}"><div class="tile-label">${opt.label}</div>`;
+        if (category === 'interactive' && idx === 0) {
+          div.onclick = () => { window.location.href = 'main.html'; };
+        } else if (category === 'interactive' && idx === 1) {
+          div.onclick = () => buildShowcaseSubmenu();
+        } else {
+          div.onclick = () => playVideo(opt.video);
+        }
+        submenuGrid.appendChild(div);
+      });
+      // Update lastSubmenu for all submenu navigations
+      lastSubmenu = category;
+      // Center the two interactive cards
+      if (category === 'interactive') {
+        submenuGrid.style.gridTemplateColumns = '1fr 1fr';
+        submenuGrid.style.gridTemplateRows = '1fr';
+        submenuGrid.style.justifyContent = 'center';
+        Array.from(submenuGrid.children).forEach((child) => {
+          child.style.gridColumn = '';
+          child.style.gridRow = '';
+        });
+      } else {
+        submenuGrid.style.gridTemplateColumns = '';
+        submenuGrid.style.gridTemplateRows = '';
+        submenuGrid.style.justifyContent = '';
+        Array.from(submenuGrid.children).forEach((child) => {
+          child.style.gridColumn = '';
+          child.style.gridRow = '';
+        });
+      }
+    }
+
+    function buildShowcaseSubmenu() {
+      submenuGrid.innerHTML = '';
+      showcaseOptions.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        div.className = 'submenu-tile retail';
+        div.innerHTML = `<img class="tile-img" src="${opt.img}" alt="${opt.label}"><div class="tile-label">${opt.label}</div>`;
+        div.onclick = () => showModel(opt.model);
+        submenuGrid.appendChild(div);
+      });
+      lastSubmenu = 'showcase';
+    }
+
+    // --- Video Playback Logic ---
+    const videoPlayer = document.getElementById('video-player');
+    function playVideo(src) {
+      videoPlayer.src = src;
+      videoPlayer.currentTime = 0;
+      videoPlayer.load();
+      fadeTo('video');
+      setTimeout(() => videoPlayer.play(), 100);
+    }
+    videoPlayer.onended = function() {
+      fadeTo('submenu');
+    };
+    // Prevent skipping
+    videoPlayer.controls = false;
+    videoPlayer.addEventListener('contextmenu', e => e.preventDefault());
+
+    function stopVideo() {
+      videoPlayer.pause();
+      videoPlayer.removeAttribute('src'); // This unloads the video
+      videoPlayer.load();
+    }
+
+    // --- 3D Model Overlay Logic ---
+    function showModel(url) {
+      const iframe = document.getElementById('model-iframe');
+      iframe.src = url;
+      fadeTo('model');
+      // Do not change lastSubmenu here; it should reflect the submenu we came from
+    }
+    document.querySelector('#model-screen .icon.home').onclick = () => {
+      fadeTo('main');
+      lastSubmenu = null;
+    };
+    document.querySelector('#model-screen .icon.back').onclick = () => {
+      buildShowcaseSubmenu();
+      fadeTo('submenu');
+      lastSubmenu = 'showcase';
+    };
+
+    // --- Fade Transition Helper ---
+    function fadeTo(target) {
+      const prev = screens[currentScreen];
+      const next = screens[target];
+      prev.classList.remove('active');
+      next.classList.add('active');
+      currentScreen = target;
+    }
+
+    // --- Responsive scaling for 4K portrait ---
+    function scaleFor4K() {
+      // Optional: Add scaling logic if you want to fit smaller screens
+    }
+    window.addEventListener('resize', scaleFor4K);
+    scaleFor4K();
+
+    // Home/Back button logic for main menu and video playback
+    function goHome() {
+      if (currentScreen === 'video') stopVideo();
+      fadeTo('main');
+      lastSubmenu = null;
+    }
+    function goBack() {
+      if (currentScreen === 'main') fadeTo('attraction');
+      else if (currentScreen === 'video') {
+        stopVideo();
+        fadeTo('submenu');
+        // lastSubmenu remains unchanged here
+      }
+    }
+    document.querySelectorAll('#main-menu .icon.home, #video-screen .icon.home').forEach(btn => {
+      btn.onclick = goHome;
+    });
+    document.querySelectorAll('#main-menu .icon.back, #video-screen .icon.back').forEach(btn => {
+      btn.onclick = goBack;
+    });
+
+    // --- Volume Controls Logic ---
+    function setVolumeIcon(isMuted) {
+      document.querySelectorAll('.volume-controls').forEach(ctrl => {
+        const volIcon = ctrl.querySelector('.vol');
+        if (isMuted) {
+          volIcon.src = 'Media/mute.png';
+          volIcon.alt = 'Muted';
+        } else {
+          volIcon.src = 'Media/Vol.png';
+          volIcon.alt = 'Volume';
+        }
+      });
+    }
+
+    function setAllVolumes(vol) {
+      if (typeof vol !== 'number') return;
+      videoPlayer.volume = Math.max(0, Math.min(1, vol));
+      setVolumeIcon(videoPlayer.muted || videoPlayer.volume === 0);
+    }
+
+    function updateMuteState() {
+      setVolumeIcon(videoPlayer.muted || videoPlayer.volume === 0);
+    }
+
+    document.querySelectorAll('.volume-controls').forEach(ctrl => {
+      const up = ctrl.querySelector('.volup');
+      const down = ctrl.querySelector('.voldown');
+      const vol = ctrl.querySelector('.vol');
+      up.onclick = () => {
+        setAllVolumes(videoPlayer.volume + 0.1);
+        videoPlayer.muted = false;
+        updateMuteState();
+      };
+      down.onclick = () => {
+        setAllVolumes(videoPlayer.volume - 0.1);
+        if (videoPlayer.volume === 0) videoPlayer.muted = true;
+        updateMuteState();
+      };
+      vol.onclick = () => {
+        videoPlayer.muted = !videoPlayer.muted;
+        updateMuteState();
+      };
+    });
+
+    videoPlayer.addEventListener('volumechange', updateMuteState);
+    // Initialize icon on load
+    updateMuteState();
+
+    // --- Inactivity Timeout: Reload index.html after 45 seconds of no interaction ---
+    let inactivityTimeout;
+    function resetInactivityTimer() {
+      clearTimeout(inactivityTimeout);
+      inactivityTimeout = setTimeout(() => {
+        // Prevent reload if video is playing
+        const videoScreen = document.getElementById('video-screen');
+        const videoPlayer = document.getElementById('video-player');
+        if (
+          videoScreen.classList.contains('active') &&
+          !videoPlayer.paused &&
+          !videoPlayer.ended
+        ) {
+          // Video is playing, do not reload, but restart timer
+          resetInactivityTimer();
+          return;
+        }
+        window.location.href = 'index.html';
+      }, 45000); // or your preferred timeout
+    }
+    // Reset timer on any click or touch
+    document.addEventListener('click', resetInactivityTimer);
+    document.addEventListener('touchstart', resetInactivityTimer);
+    // Start timer on load
+    resetInactivityTimer();
+  </script>
+</body>
+</html>
